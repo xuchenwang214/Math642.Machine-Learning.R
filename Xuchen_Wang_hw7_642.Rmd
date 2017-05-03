@@ -1,0 +1,182 @@
+---
+title: "HW7_642"
+author: "Xuchen Wang"
+date: "March 26, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(tree)
+library(gbm)
+library(glmnet)
+library(randomForest)
+```
+
+#### Problem 9 
+#### (a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+```{r}
+attach(OJ)
+set.seed(1)
+train <- sample(nrow(OJ), 800)
+oj_train <- OJ[train,]
+oj_test <- OJ[-train,]
+```
+
+#### (b) Fit a tree to the training data, with Purchase as the response and the other variables as predictors. Use the summary() function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+```{r}
+oj_tree <- tree(Purchase~., data = oj_train)
+summary(oj_tree)
+```
+
+The tree model uses three variables LoyalCH, PriceDiff and SpecialCH in tree construction. The training error rate is 16.5%. There are 8 terminal nodes.
+
+#### (c) Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
+```{r}
+oj_tree
+```
+
+Let's pick terminal node labeled “9)”. The splitting variable at this node is LoyalCH. The splitting value of this node is 0.0356415. There are 109 points in the subtree below this node. The deviance for all points contained in region below this node is 100.9. A * in the line denotes that this is in fact a terminal node. The prediction at this node is Purchase = MM. About 17.43% points in this node have CH as value of Purchase. Remaining 82.57% points have MM as value of Purchase.
+
+#### (d) Create a plot of the tree, and interpret the results.
+```{r}
+plot(oj_tree)
+text(oj_tree, pretty = 2)
+```
+
+LoyalCH is the most important variable of the tree, in fact top 3 nodes contain LoyalCH. If LoyalCH < 0.264, the tree predicts MM. If LoyalCH > 0.765, the tree predicts CH. For other values of LoyalCH, the prediction of tree depends on PriceDiff and SpecialCH.
+
+#### (e) Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
+```{r}
+pred_purchase <- predict(oj_tree, oj_test, type = "class")
+table(pred_purchase, oj_test[,"Purchase"])
+```
+
+```{r}
+n <- nrow(oj_test)
+1-(147+62)/n
+```
+
+The test error rate is 22.59%
+
+#### (f) Apply the cv.tree() function to the training set in order to determine the optimal tree size.
+```{r}
+oj_cv <- cv.tree(oj_tree, FUN = prune.misclass)
+oj_cv
+```
+
+The optimal tree size is 5. Because it has the smallest classification error rate and although the error rate of 5 and 8 are the same, we prefer the smaller one.
+
+#### (g) Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
+```{r}
+plot(oj_cv$size, oj_cv$dev, type = 'b', xlab = "Tree Size", 
+     ylab = "classification error rate")
+```
+
+#### (h) Which tree size corresponds to the lowest cross-validated classification error rate?
+Size of 5 and 8 give the lowest cross-validation classification error rate.
+
+#### (i) Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation.
+```{r}
+oj_prune <- prune.misclass(oj_tree, best = 5)
+summary(oj_prune)
+```
+
+#### (j) Compare the training error rates between the pruned and unpruned trees. Which is higher?
+The training error rate of the pruned tree is 16.5%. It is exactly the same as that of unpruned tree.
+
+#### (k) Compare the test error rates between the pruned and unpruned trees. Which is higher?
+```{r}
+pred_prune <- predict(oj_prune, oj_test, type = "class")
+table(pred_prune,oj_test[,"Purchase"])
+1-(147+62)/n
+```
+
+The test error rate of the pruned tree is 22.59%. They are exactly the same.
+
+
+#### Problem 10
+#### (a) Remove the observations for whom the salary information is unknown, and then log-transform the salaries.
+```{r}
+attach(Hitters)
+hitters <- na.omit(Hitters)
+hitters$Salary <- log(hitters$Salary)
+```
+
+#### (b) Create a training set consisting of the first 200 observations, and a test set consisting of the remaining observations.
+```{r}
+hit_train <- hitters[1:200,]
+hit_test <- hitters[-(1:200),]
+```
+
+#### (c) Perform boosting on the training set with 1000 trees for a range of values of the shrinkage parameter lambda. Produce a plot with different shrinkage values on the x-axis and the corresponding training set MSE on the y-axis.
+```{r}
+upind <- seq(-20, -0.1, by=0.1)
+lambdas <- 10^upind
+n <- length(lambdas)
+train_err <- rep(NA,n)
+test_err <- rep(NA,n)
+for (i in 1:n){
+  hit_boost <- gbm(Salary~., data = hit_train, distribution = "gaussian", 
+                   n.trees = 1000,shrinkage = lambdas[i])
+  train_pre <- predict(hit_boost, hit_train, n.trees=1000)
+  train_err[i] <- mean((train_pre-hitters$Salary[1:200])^2)
+  test_pre <- predict(hit_boost, hit_test, n.trees=1000)
+  test_err[i] <- mean((test_pre-hitters$Salary[-(1:200)])^2)
+}
+plot(lambdas,train_err, col="red", pch=15, type = 'b')
+```
+
+#### (d) Produce a plot with different shrinkage values on the x-axis and the corresponding test set MSE on the y-axis.
+```{r}
+plot(lambdas,test_err, col="blue", pch=15, type = 'b')
+```
+
+#### (e) Compare the test MSE of boosting to the test MSE that results from applying two of the regression approaches seen in Chapters 3 and 6.
+```{r}
+# regression model
+hit_lm <- lm(Salary~., data = hit_train)
+pred_lm <- predict(hit_lm, hit_test)
+mean((pred_lm-hitters$Salary[-(1:200)])^2)
+# lasso
+set.seed(110)
+x <- model.matrix(hit_lm)[,-1]
+y <- hitters$Salary[1:200]
+x_test <- model.matrix(Salary~., data = hit_test)[,-1]
+hit_lasso <- glmnet(x,y,alpha = 1)
+pred_lasso <- predict(hit_lasso, newx=x_test, s=0.1)
+mean((pred_lasso-hitters$Salary[-(1:200)])^2)
+min(test_err)
+```
+
+Both linear regression and lasso have a higher test MSE.
+
+#### (f) Which variables appear to be the most important predictors in the boosted model?
+```{r}
+summary(hit_boost)
+```
+CAtBat has the most importantt predictors in the boosted model.
+
+### (g) Now apply bagging to the training set. What is the test set MSE for this approach?
+```{r}
+hit_bag <- randomForest(Salary~., data=hit_train, mtry=19, importance=T)
+pred_bag <- predict(hit_bag, hit_test)
+mean((pred_bag-hitters$Salary[-(1:200)])^2)
+```
+
+The test MSE is 23.18%.
+
+
+
+
+
+
+
+
+
+
+
+
+
+

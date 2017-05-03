@@ -1,0 +1,293 @@
+---
+title: "HW4_642"
+author: "Xuchen Wang"
+date: "February 14, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+attach(Boston)
+library(boot)
+library(splines)
+```
+
+#### Chapter 7 Problem 2
+##### (a)
+g is constant because the loss function is ignored and it would minimize the area under the curve of g.
+
+##### (b)
+g is quadratic because it would minimize the area under the curve of the first derivative of g.
+
+##### (c)
+g is cubic because it would minimize the area under the curve of the second derivative of g.
+
+##### (d)
+g is quartic because it would minimize the area under the curve of the third derivative of g.
+
+##### (e)
+Since lambda is 0, the penalty term has no effect. We choose g just using the least square method.
+
+#### Chapter 7 Problem 4
+```{r}
+set.seed(1)
+x <- seq(0, 5, length = 100)
+y <- 1 + I(x>=0 & x<=2) - (x-1)*I(x>=1 & x<=2) + 3*((x-3)*I(x>=3 & x<=4)+I(x>4 & x<=5))
+plot(x,y,type = 'l')
+```
+
+#### Chapter 7 Problem 9
+#### This question uses the variables dis (the weighted mean of distances to five Boston employment centers) and nox (nitrogen oxides concentration in parts per 10 million) from the Boston data. We will treat dis as the predictor and nox as the response.
+##### (a) Use the poly() function to fit a cubic polynomial regression to predict nox using dis. Report the regression output, and plot the resulting data and polynomial fits.
+```{r}
+# fit the cubic ploynomial regression
+fit_poly_reg <- lm(nox~ poly(dis,3), data = Boston)
+summary(fit_poly_reg)
+# predict nox using dis
+dis_range <- range(dis)
+dis_grid <- seq(dis_range[1], dis_range[2], length = 100)
+pred_poly_reg <- predict(fit_poly_reg, newdata = list(dis=dis_grid))
+# plot the polynomial fits
+par(mfrow=c(2,2))
+plot(fit_poly_reg)
+```
+
+```{r}
+# plot the resulting data of prediction
+plot(dis, nox, cex = .5, col = 'darkgrey')
+lines(dis_grid, pred_poly_reg, lwd = 2, col = 'blue')
+```
+
+Summary shows that all terms in the model are significant. Plot shows that the polynomial regression fits the data very well.
+
+##### (b) Plot the polynomial fits for a range of different polynomial degrees (say, from 1 to 10), and plot the associated residual sum of squares.
+```{r warning=FALSE}
+par(mfrow=c(2,2))
+rss_train <- c()
+for (i in 1:10){
+  fit_poly_reg <- lm(nox~poly(dis,i), data = Boston)
+  plot(fit_poly_reg, main = paste(i,"-degree of Polynomial Regression Plot"))
+  rss_train[i] <- sum(fit_poly_reg$residuals^2)
+}
+```
+
+```{r}
+plot(1:10, rss_train, type = "b", main = "assiciated RSS plot", 
+     xlab = "degree of polynomial", ylab = "training RSS")
+```
+
+As expected, the training error decreases as degree increases.
+
+##### (c) Perform cross-validation or another approach to select the optimal degree for the polynomial, and explain your results.
+```{r}
+set.seed(3)
+cv_err <- c()
+for (i in 1:10){
+  fit_poly_reg <- glm(nox~poly(dis,i))
+  cv_err[i] <- cv.glm(Boston, fit_poly_reg, K = 10)$delta[1]
+}
+list(min_cv_error=which.min(cv_err))
+plot(1:10, cv_err, type = 'l', main = "cross-validation error plot", 
+     xlab = 'degree of polynomial', ylab = "cv error")
+```
+
+We use 10 fold cross-validation approach to select the optimal degree. From both the result and plot, we pick 3 as the optimal degree, since it has the smallest cv error.
+
+##### (d) Use the bs() function to fit a regression spline to predict nox using dis. Report the output for the fit using four degrees of freedom. How did you choose the knots? Plot the resulting fit.
+```{r}
+fit_spline_reg <- lm(nox~ bs(dis, df = 4), data = Boston)
+summary(fit_spline_reg)
+pred_spline_reg <- predict(fit_spline_reg, newdata = list(dis=dis_grid))
+plot(dis, nox, cex = .5, col = 'darkgrey')
+lines(dis_grid, pred_spline_reg, lwd = 2, col = 'red')
+```
+
+From the result of part(c), we can choose a cubic regression spline model and the degree of freedom is four. We choose the knots in the uniform fashion. Summary shows that all terms in the spline regression model are significant and plot shows that the model fits the data well.
+
+##### (e) Now fit a regression spline for a range of degrees of freedom, and plot the resulting fits as well as the resulting RSS. Describe the results obtained.
+```{r}
+rss_train <- c()
+for (i in 3:15){
+  fit_spline_reg <- lm(nox~bs(dis, df=i), data = Boston)
+  rss_train[i-2] <- sum(fit_spline_reg$residuals^2)
+  pred_spline_reg <- predict(fit_spline_reg, newdata = list(dis=dis_grid))
+  plot(nox~dis, data = Boston, cex = .5, col = 'darkgrey')
+  title(paste(i,'-degree of freedom Regression Spline Plot'))
+  lines(dis_grid, pred_spline_reg, lwd = 2, col = 'red')
+}
+```
+
+```{r}
+rss_train
+plot(3:15, rss_train, type = 'b', main = "RSS of different degrees of freedom", 
+     xlab = "degrees of freedom", ylab = "training RSS")
+```
+
+From both the result and plot, the training RSS monotonically decreases except for degrees of 9 and 11.
+
+(f) Perform cross-validation or another approach in order to select the best degrees of freedom for a regression spline on this data. Describe your results.
+```{r warning=FALSE}
+set.seed(1)
+cv_err <- c()
+for(i in 3:15){
+  fit_spline_reg <- glm(nox~bs(dis, df=i), data = Boston)
+  cv_err[i-2] <- cv.glm(Boston, fit_spline_reg, K = 10)$delta[1] 
+}
+list(best_degree = which.min(cv_err) + 2)
+plot(3:15, cv_err, type = 'l', main = "cross-validation error plot", 
+     xlab = 'degree of freedom', ylab = "cv error")
+```
+
+From both the result and plot, we pick df = 10 as the best degrees of freedom, since it has the smallest cv error.
+
+
+#### Chapter 7 Problem 11
+##### (a)
+```{r}
+set.seed(5)
+x1 <- rnorm(100)
+x2 <- rnorm(100)
+y <- 3*x1 + 24*x2 +9
+```
+
+##### (b) 
+```{r}
+beta0 <- c()
+beta1 <- c()
+beta2 <- c()
+beta1[1] <- 4
+```
+
+##### (c) 
+```{r}
+a <- y - beta1*x1
+beta2[1] <- lm(a~x2)$coef[2]
+```
+
+#####  (d) 
+```{r}
+a <- y - beta2*x2
+beta1[1] <- lm(a~x1)$coef[2]
+```
+
+##### (e) 
+```{r}
+beta1[1] <- 4
+for (i in 1:1000){
+  a <- y - beta1[i]*x1
+  beta2[i] <- lm(a~x2)$coef[2]
+  beta0[i] <- lm(a~x1)$coef[1]
+  a <- y - beta2[i]*x2
+  if (i < 1000){
+    beta1[i+1] <- lm(a~x1)$coef[2]
+  }
+}
+list(beta0 = beta0, beta1=beta1, beta2=beta2)
+plot(1:1000, beta0, type = 'l', xlab = "iterations", ylim = c(0,30), 
+     ylab = "betas", col = 'red')
+lines(1:1000, beta1, col = 'blue')
+lines(1:1000, beta2, col = 'green')
+legend("topright", c("beta0", "beta1", "beta2"), lty = 1, col = c("red", "blue","green"))
+```
+
+The coefficients quikly attain their least square values.
+
+##### (f) 
+```{r}
+fit_lm <- lm(y~x1+x2)
+plot(1:1000, beta0, type = 'l', xlab = "iterations", ylim = c(0,30), 
+     ylab = "betas", col = 'red')
+lines(1:1000, beta1, col = 'blue')
+lines(1:1000, beta2, col = 'green')
+abline(h = fit_lm$coef[1], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+abline(h = fit_lm$coef[2], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+abline(h = fit_lm$coef[3], lty = "dashed", lwd = 3, col = rgb(0, 0, 0, alpha = 0.4))
+legend("topright", c("beta0", "beta1", "beta2", "multiple regression"), 
+       lty = 1, col = c("red", "blue","green","black"))
+```
+
+The plot shows that the coefficients using linear model exactly matches the coefficients using backfitting method.
+
+##### (g) 
+When the relationship between response and predictors is linear, five iterations is sufficient to attain a good approximation of true regression coefficients.
+
+#### Fourier Analysis Problem
+##### 1.Create a signal by adding together 2 sine waves.Plot the individual waves and the composite signal.
+```{r}
+par(mfrow=c(3,1))
+nTheta <- 100
+nCycles1 = 5.0
+Theta1 = seq(from = 0, to = nCycles1*2.0*pi, by = nCycles1*2*pi/nTheta)
+SinTheta1 = sin(Theta1)
+plot( SinTheta1, type = "l", lwd = 3, main = "Sin f=5")
+
+nCycles2 = 10.0
+Theta2 = seq(from = 0, to = nCycles2*2.0*pi, by = nCycles2*2*pi/nTheta)
+SinTheta2 = sin(Theta2)
+plot( SinTheta2, type = "l", lwd = 3, main = "Sin f=10")
+
+SinSum0 = SinTheta1 + SinTheta2
+plot( SinSum0, type = "l", lwd = 3, main = "Sin Sum w/o Signal")
+```
+
+##### 2.Run and FFT on the signal and plot it. Explain what you see.  Is it what you would expect?  Why or why not?
+```{r}
+plot( abs(fft(SinSum0,inverse = F)), type = "l", lwd = 3, main = "Sin Sum w/o Signal")
+```
+
+In the plot, as expected, the peaks correspond to the wave frequency 5 and 10. Height correspond to wave amplitude, so the wave of 5 frequency has greater amplitude. Phase correspond to starting point of the wave.
+
+##### 3.Create a signal by adding together 4 sine waves.  Plot the individual waves and the composite signal.
+```{r}
+layout( matrix( c(1,2,3,4 ) , nrow=4 ,ncol=1 ,byrow=FALSE ) )
+par(mar=c(3,3,1,0))
+par(mgp=c(2,1,0))
+par(mai=c(0.5,0.5,0.1,0.1))
+
+plot( SinTheta1, type = "l", lwd = 3, main = "Sin f=5")
+plot( SinTheta2, type = "l", lwd = 3, main = "Sin f=10")
+
+nCycles3 = 25.0
+Theta3 = seq(from = 0, to = nCycles3*2.0*pi, by = nCycles3*2*pi/nTheta)
+SinTheta3 = sin(Theta3)
+plot( SinTheta3, type = "l", lwd = 3, main = "Sin f=25")
+
+nCycles4 = 30.0
+Theta4 = seq(from = 0, to = nCycles4*2.0*pi, by = nCycles4*2*pi/nTheta)
+SinTheta4 = sin(Theta4)
+plot( SinTheta4, type = "l", lwd = 3, main = "Sin f=30")
+```
+
+```{r}
+SinSum1 = SinTheta1 + SinTheta2 + SinTheta3 + SinTheta4 
+plot( SinSum1, type = "l", lwd = 3, main = "Sin Sum w/o Signal")
+```
+
+##### 4.Run and FFT on the signal and plot it.  Explain what you see.  Is it what you would expect?  Why or why not?
+```{r}
+plot( abs(fft(SinSum1,inverse = F)), type = "l", lwd = 3, main = "Sin Sum w/o Signal")
+```
+
+In the plot, as expected, the peaks correspond to the wave frequency 5,10,25 and 30. Height correspond to wave amplitude, so the wave of 5 frequency has greater amplitude. Phase correspond to starting point of the wave.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,93 @@
+---
+title: "hw11_642"
+author: "Xuchen Wang"
+date: "April 12, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("/Users/xuchenwang/BernBeta.R")
+```
+
+#### Problem 1.
+#### a) What are the inputs and outputs for BernBeta?  Explain what they mean.
+Inputs: priorShape - vector of parameter values for the prior beta distribution.
+        dataVec - vector of 1's and 0's: the vector of data for Bernoulli distribution
+        credMass - the probability mass of the HDI.
+Outputs: postShape - vector of parameter values for the posterior beta distribution.
+         Graphics: Creates a three-panel graph of prior, likelihood, and posterior with          highest posterior density interval.
+         Example of use:
+         postShape = BernBeta( priorShape=c(1,1) , dataVec=c(1,0,0,1,1) )
+         You will need to "source" this function before using it, so R knows
+         that the function exists and how it is defined.
+
+#### b) Start with a prior of beta(4,4).  Use the BernBeta function to flip the coin once and get a head.  What is the posterior?  Show all plots and explain results
+```{r}
+poster <- BernBeta(c(4,4),c(1))
+poster
+```
+
+The posterior is beta(5,4). The results show that after one trial and it gets a head, the distribution of theta move from symmetric to right bias, which means the belief of theta change due to the collected data.
+
+#### c) Use the posterior from the previous flip as the prior for the next flip.  (You can use the result from the last run - "post" - instead of c(5,4) as the input the BernBeta.) Flip the coin again and get a head again.  What is the new posterior?
+```{r}
+poster2 <- BernBeta(poster,c(1))
+poster2
+```
+
+The new posterior is beta(6,4)
+
+#### d) Using the posterior from the last flip, flip again and get tails.  What is the new posterior?
+```{r}
+poster3 <- BernBeta(poster2,c(0))
+poster3
+```
+
+The new posterior is beta(6,5)
+
+#### e) Start over at b) and do three flips, but in the order T, H, H.  Show the posterior after these 3 flips. How does the posterior change?  Does order of the results matter?
+```{r}
+poster4 <- BernBeta(c(4,4),c(0,1,1))
+poster4
+```
+
+The posterior is beta(6,5). It does not change and thus, the order of the results does not matter.
+
+#### f) Start over at b) and do three flips, but in the order T, T, H.  Show the posterior after these 3 flips. How does the posterior change?
+```{r}
+poster4 <- BernBeta(c(4,4),c(0,0,1))
+poster4
+```
+
+The posterior is beta(5,6)
+
+#### Problem 2 You have a coin that you know came from a magic shop.  You know it is biased but you are not sure which way, towards heads or tails.
+
+#### a) Find a beta that reflects your beliefs
+Beta(1,1)
+
+#### b) Use BernBeta to flip the coin 5 times and get T T H T T.  What is your posterior?  Show all plots and explain your results. 
+```{r}
+poster_1 <- BernBeta(c(1,1),c(0,0,1,0,0))
+poster_1 
+```
+The posterior is Beta(2,5). The results show that after five trials and it gets T T H T T, the distribution of theta moves from symmetric to right bias since there is more Ts, which means the belief of theta change due to the collected data.
+
+#### c) What will the posterior look like after 100 flips if you get 10 heads and 90 tails? (No need to use the BernBeta function.  Calculate the answer by hand.)
+The posterior is Beta(11,91). Since the prior is Beta(1,1) and we get 10 heads and 90 tails, the posterior should be Beta(1+10,1+90)=Beta(11,91).
+
+#### d) Use R to plot the answer to c). 
+```{r}
+BernBeta(c(1,1),c(rep(1,10),rep(0,90)))
+```
+
+
+
+
+
+
+
+
+
+

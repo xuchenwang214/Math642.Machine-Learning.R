@@ -1,0 +1,218 @@
+---
+title: "HW2_642"
+author: "Xuchen Wang"
+date: "January 30, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+library(boot)
+```
+
+
+#### 2 We will now derive the probability that a given observation is part of a bootstrap sample. Suppose that we obtain a bootstrap sample from a set of n observations.
+##### (a) What is the probability that the first bootstrap observation is not the jth observation from the original sample? Justify your answer.
+It is 1-1/n. For the first bootstrap observation, it could be the 1st, 2nd, 3rd, ..., nth observation from the original sample. So there are n choices. Among n choices, only 1 of them is the jth observation from the original sample. So the probability that the first bootstrap observation is not the jth observation from the original sample 1-1/n.
+
+##### (b) What is the probability that the second bootstrap observation is not the jth observation from the original sample?
+It is 1-1/n.
+
+##### (c) Argue that the probability that the jth observation is not in the bootstrap sample is (1 - 1/n)^n.
+From part(a), (b), we can conclude that for each of the observation in the bootstrap, the probability that it is not the jth observation from the original sample is 1-1/n. Since there are n observations in the bootstrap, by the fundamental theorem of multiplication, the probability that the jth observation is not in the bootstrap sample is (1 - 1/n)^n.
+
+##### (d) When n = 5, what is the probability that the jth observation is in the bootstrap sample?
+```{r}
+n <- 5
+1-(1-1/n)^n
+```
+
+##### (e) When n = 100, what is the probability that the jth observation is in the bootstrap sample?
+```{r}
+n <- 100
+1-(1-1/n)^n
+```
+
+##### (f) When n = 10,000, what is the probability that the jth observation is in the bootstrap sample?
+```{r}
+n <- 10000
+1-(1-1/n)^n
+```
+
+##### (g) Create a plot that displays, for each integer value of n from 1 to 100,000, the probability that the jth observation is in the bootstrap sample. Comment on what you observe.
+```{r}
+n <- 1:100000
+p <- 1-(1-1/n)^n
+plot(n,p)
+```
+
+As n increases, the probability decreases significantly. When n is big enough, the probability is very close to 0.
+
+##### (h) We will now investigate numerically the probability that a bootstrap sample of size n = 100 contains the jth observation. Here j = 4. We repeatedly create bootstrap samples, and each time we record whether or not the fourth observation is contained in the bootstrap sample.
+```{r}
+store = rep(NA, 10000) 
+for(i in 1:10000){
+  store[i] = sum(sample(1:100, rep=TRUE)==4)>0 
+  } 
+mean(store)
+```
+The result is very close to the answer in part(e). Bootstrap is a good simulation and get answer close to the theoretic answer.
+
+
+
+#### 3 We now review k-fold cross-validation.
+##### (a) Explain how k-fold cross-validation is implemented.
+K-fold cross-validation involves randomly dividing the set of observations into k groups of approximately equal size. The first fold is treated as a validation set, and the method is fit on the remaining k - 1 folds. The mean squared error, MSE1, is then computed on the observations in the held-out fold. This procedure is repeated k times; each time, a different group of observations is treated as a validation set. This process results in k estimates of the test error, MSE1,MSE2,...,MSEk. The k-fold CV estimate is computed by averaging these values.
+
+##### (b) What are the advantages and disadvantages of k-fold cross-validation relative to:
+##### i. The validation set approach?
+Advantage: k-fold CV has lower variance and lower level of bias.
+
+##### ii. LOOCV
+Advantage: k-fold CV uses less time compared with LOOCV and has lower variance.
+Disadvantage: k-fold CV has higher leverl of bias.
+
+
+
+#### 8. We will now perform cross-validation on a simulated data set.
+##### (a) Generate a simulated data set as follows:
+```{r}
+set.seed(1)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+```
+##### In this data set, what is n and what is p? Write out the model used to generate the data in equation form.
+n = 100 (number of obs)  p = 1 (number of predictor)
+model: y = x - 2*x^2 + epsilon
+
+##### (b) Create a scatterplot of X against Y . Comment on what you find.
+```{r}
+plot(x, y)
+```
+
+There is quadratic(non-linear) relationship between x and y since their shape is just like a  parabolic curve.
+
+##### (c) Set a random seed, and then compute the LOOCV errors that result from fitting the following four models using least squares.
+```{r}
+set.seed(2)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+
+cv.error <- c() 
+for (i in 1:4){
+  glm.fit <- glm(y~ poly(x, i))
+  cv.error[i] <- cv.glm(data.frame(x,y), glm.fit)$delta[1]
+}
+print(cv.error)
+```
+
+##### (d) Repeat (c) using another random seed, and report your results. Are your results the same as what you got in (c)? Why?
+```{r}
+set.seed(3)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+
+cv.error <- c() 
+for (i in 1:4){
+  glm.fit <- glm(y~ poly(x, i))
+  cv.error[i] <- cv.glm(data.frame(x,y), glm.fit)$delta[1]
+}
+print(cv.error)
+```
+
+The results are not the same as that in part(c). Because it is variable when we use different training data. When we use different training data, we may get different estimate of test error.
+
+##### (e) Which of the models in (c) had the smallest LOOCV error? Is this what you expected? Explain your answer.
+The seconde model had the smallest LOOCV error. This is as I expected in part(b). Since the second model had the smallest LOOCV error, it is the best fitted model. Also, the figure shows a quadratic relationship between x and y.
+
+##### (f) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using least squares. Do these results agree with the conclusions drawn based on the cross-validation results?
+```{r}
+set.seed(2)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+for (i in 1:4){
+  print(paste(i," modle"))
+  print(coef(summary(glm(y~ poly(x, i)))))
+}
+
+for (i in 1:4){
+  print(paste(i," modle"))
+  print(summary(glm(y~ poly(x, i))))
+}
+```
+
+The coefficient estimates of intercept, x and x^2 is significant. But the coefficient estimates of x^3 and x^4 is not significant. So there is strong evidence that y has relationship with x and x^2, has no relationship with x^3 and x^4. These results agree with the conclusions drawn based on the cross-validation results. Using both methods, we find that the second model is the best fitted model.
+
+
+
+#### 9. We will now consider the Boston housing data set, from the MASS library.
+##### (a) Based on this data set, provide an estimate for the population mean of medv. Call this estimate miu.
+```{r}
+data(Boston)
+attach(Boston)
+mean(medv)
+```
+
+##### (b) Provide an estimate of the standard error of miu. Interpret this result.
+
+```{r}
+n <- nrow(Boston)
+sd(medv)/sqrt(n)
+```
+The standard error of miu is less than 0.5, which means the standard deriviation of sample mean is relatively small. So the distribution of sample mean is less variable. It is of high probability that the estimate of population mean is very close to the true value.
+
+##### (c) Now estimate the standard error of miu using the bootstrap. How does this compare to your answer from (b)?
+```{r}
+mean.boot <- function(data, index){
+  mean(data[index])
+}
+boot(medv, mean.boot, R = 1000)
+```
+SE(miu) = 0.4102798
+The result is very close to that in part(b). The difference is just about 0.002.
+
+##### (d) Based on your bootstrap estimate from (c), provide a 95% confidence interval for the mean of medv. Compare it to the results obtained using t.test(Boston$medv).
+```{r}
+paste("[",22.53281-2*0.4088611,",",22.53281+2*0.4088611,"]")
+t.test(Boston$medv)
+```
+
+The results are very close. The difference of the two side points is less than 0.02.
+
+##### (e) Based on this data set, provide an estimate, miu_med, for the median value of medv in the population.
+```{r}
+median(medv)
+```
+
+##### (f) We now would like to estimate the standard error of miu_med. Unfortunately, there is no simple formula for computing the standard error of the median. Instead, estimate the standard error of the median using the bootstrap. Comment on your findings.
+```{r}
+med <- function(data, index){
+  median(data[index])
+}
+boot(medv, med, R = 1000)
+```
+SE(miu_med) = 0.3848322   
+The standard error of miu_med is less than 0.5, which means the standard deriviation of sample median is relatively small. So the distribution of sample median is less variable. It is of high probability that the estimate of population median is very close to the true value.
+
+##### (g) Based on this data set, provide an estimate for the tenth percentile of medv in Boston suburbs. Call this quantity miu_0.1.
+```{r}
+quantile(medv, prob = 0.1)
+```
+
+##### (h) Use the bootstrap to estimate the standard error of miu_0.1. Comment on your findings.
+```{r}
+quan10th.boot <- function(data, index){
+  quantile(data[index], prob = 0.1)
+}
+boot(medv, quan10th.boot, R = 1000)
+```
+SE(miu_0.1) = 0.504141   
+The standard error of miu_0.1 is close to 0.5, which means the standard deriviation of sample tenth quantile is relatively small. So the distribution of sample  tenth quantile is less variable. It is of high probability that the estimate of population  tenth quantile is very close to the true value.

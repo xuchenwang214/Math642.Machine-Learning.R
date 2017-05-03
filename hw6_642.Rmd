@@ -1,0 +1,158 @@
+---
+title: "hw6_642"
+author: "Xuchen Wang"
+date: "February 26, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(e1071)
+```
+
+#### Chapter 9 Problem 3
+#### Here we explore the maximal margin classifier on a toy data set.
+##### (a) We are given n = 7 observations in p = 2 dimensions. For each observation, there is an associated class label. Sketch the observations.
+```{r}
+x1 <- c(3,2,4,1,2,4,4)
+x2 <- c(4,2,4,4,1,3,1)
+y <- c(rep("red",4),rep("blue",3))
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+```
+
+##### (b) Sketch the optimal separating hyperplane, and provide the equation for this hyperplane (of the form (9.1)).
+The optimal separating hyperplane is between (2,2), (4,4) and (2,1), (4,3).
+To attain the maximal margin, the hyperplane should be in the middle of those points and hence it goes through (2,1.5) and (4,3.5). So the equation is 0.5 - x1 + x2 = 0
+
+```{r}
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+abline(-0.5, 1)
+```
+
+##### (c) Describe the classification rule for the maximal margin classifier. 
+0.5 - x1 + x2 > 0
+
+##### (d) On your sketch, indicate the margin for the maximal margin hyperplane. How wide is the margin?
+```{r}
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+abline(-0.5, 1)
+abline(0,1,lty=2)
+abline(-1,1,lty=2)
+```
+
+The margin is 1/2*sqrt(2) unit.
+
+##### (e) Indicate the support vectors for the maximal margin classifier.
+```{r}
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+abline(-0.5, 1)
+points(c(2,2,4,4),c(2,1,4,3), pch=4)
+```
+
+##### (f) Argue that a slight movement of the seventh observation would not affect the maximal margin hyperplane.
+Since the seventh observation is not in the margin, a slight movement of it would not affect the maximal margin hyperplane
+
+##### (g) Sketch a hyperplane that is not the optimal separating hyperplane, and provide the equation for this hyperplane.
+The hyperplane goes through points (2,1.3) and (4,3.3). Its equation is 0.7 - x1 + x2 =0
+```{r}
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+abline(-0.7, 1)
+```
+
+##### (h) Draw an additional observation on the plot so that the two classes are no longer separable by a hyperplane.
+```{r}
+plot(x1,x2,col=y,xlim=c(0,5),ylim=c(0,5))
+points(1,3, col = "blue")
+```
+
+
+#### Chapter 9 Problem 5
+##### (a)
+```{r}
+x1 <- runif(10000) - 0.5
+x2 <- runif(10000) - 0.5
+y <- 1*(x1^2-x2^2 > 0.05)
+```
+
+##### (b) Plot the observations, colored according to their class labels. Your plot should display X1 on the x-axis, and X2 on the y-axis.
+```{r}
+plot(x1, x2, col=(3-y))
+```
+
+The plot shows non-linear boundary
+
+##### (c) Fit a logistic regression model to the data, using X1 and X2 as predictors.
+```{r}
+logis_mod <- glm(y~x1+x2, family = binomial)
+summary(logis_mod)
+```
+
+Predictor x1 is significant.
+
+##### (d) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be linear.
+```{r}
+data <- data.frame(x1=x1, x2=x2, y=y)
+logis_prob <- predict(logis_mod, data, type = "response")
+logis_pred <- ifelse(logis_prob>0.5, 1, 0)
+plot(x1, x2, col = (4-logis_pred))
+```
+
+With a shreshold of 0.5, all observations are classified to a single class, therefore we shift the shreshold to 0.3.
+
+```{r}
+logis_pred <- ifelse(logis_prob>0.3, 1, 0)
+plot(x1, x2, col = (4-logis_pred))
+```
+
+##### (e) Now fit a logistic regression model to the data using non-linear functions of X1 and X2 as predictors (e.g. X12, X1*X2, log(X2), and so forth).
+```{r message=FALSE}
+logis_mod <- glm(y~x1:x2+I(x1^2)+I(x2^2), family = binomial)
+summary(logis_mod)
+```
+
+##### (f) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be obviously non-linear. If it is not, then repeat (a)-(e) until you come up with an example in which the predicted class labels are obviously non-linear.
+```{r}
+logis_prob <- predict(logis_mod, data, type = "response")
+logis_pred <- ifelse(logis_prob>0.5, 1, 0)
+plot(x1, x2, col = (4-logis_pred))
+```
+
+The decision boundary is non-linear.
+
+##### (g) Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
+```{r}
+data <- data.frame(x1=x1, x2=x2, y=as.factor(y))
+svm_mod <- svm(y~., data = data, kernel = "linear", cost = 1, scale = F)
+svm_pred <- predict(svm_mod, data)
+plot(x1,x2,col=(3-as.numeric(svm_pred)))
+```
+
+A linear kernel fails to find non-linear decision boundary and classifies all points to a single class.
+
+##### (h) Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
+```{r}
+svm_mod <- svm(y~., data = data, kernel = "polynomial", degree = 2, cost = 1, scale = F)
+svm_pred <- predict(svm_mod, data)
+plot(x1,x2,col=(3-as.numeric(svm_pred)))
+```
+
+The prediction is very close to the true classification.
+
+##### (i) Comment on your results.
+This experiment shows that svm with non-linear kernel is very powerful in finding non-linear boundary. The logistic regression with linear terms and svm with linear kernels fail to find the dicision boundary. Although we can add non-linear terms to logistic regression to attain a similar prediction of the true classification, it might need several times of tryings. But using non-linear kernel in svm method, we only need to find a tuning parameter.
+
+
+
+
+
+
+
+
+
+
+
+
+

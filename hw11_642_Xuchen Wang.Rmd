@@ -1,0 +1,134 @@
+---
+title: "hw11_642"
+author: "Xuchen Wang"
+date: "April 28, 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Problem 1 
+Repeat the neural network classification example below with the Weekly dataset provided in ISLR. Comment on the results.
+
+```{r}
+library(ISLR)
+library(nnet)
+
+Smtrain <- sample(1:1250,1000)         # train data indexes
+Smtest <- setdiff(1:1250,Smtrain)      # test data indexes
+
+ideal <- class.ind(Smarket$Direction)  # turn char factor into 1/0
+SmANN = nnet(Smarket[Smtrain,-9],ideal[Smtrain,],size=10,softmax=TRUE)   # build neural network
+  
+# summary(SmANN)      
+table(predict(SmANN,Smarket[Smtest,-9],type="class"),Smarket[Smtest,]$Direction)
+# predict directions in test data
+```
+
+The prediction is "Up" for all test data observations. The prediction is approximately 126/250=50% correct. It is not a useful model for the predition of directions, since the outcome is the same as a guess.
+
+#### Problem 2
+Create a neural network that learns how to multiply 2 numbers from 1 to 10 together.  Use the code provided on blackboard. Try different numbers of nodes per layer and number of hidden layers. Plot the best neural network and describe the model. Describe how accurate the results are in each case.
+
+```{r}
+library(neuralnet)
+set.seed(100)
+x <- sample(1:10,50,replace = T)
+set.seed(100)
+y <- sample(1:10,50,replace = T)
+outcome <- x*y
+traindata <- data.frame(x=x,y=y,outcome=outcome)
+```
+
+```{r}
+# try two hidden layers with 10 nodes each
+net_multi1<- neuralnet(outcome~x+y, traindata, hidden=c(10,10))
+testdata <- data.frame(x=1:10,y=1:10)
+testresult <- compute(net_multi1,testdata)
+result <- cbind(testresult$net.result,(1:10)*(1:10))
+colnames(result) <- c("predition","true value")
+result
+mean((result[,1]-result[,2])^2)
+```
+The test MSE is 0.0000129. It is very accurate.
+
+```{r}
+# try two hidden layers with 20 nodes each
+net_multi2<- neuralnet(outcome~x+y, traindata, hidden=c(20,20))
+testdata2 <- data.frame(x=1:10,y=1:10)
+testresult2 <- compute(net_multi2,testdata2)
+result2 <- cbind(testresult2$net.result,(1:10)*(1:10))
+colnames(result2) <- c("predition","true value")
+result2
+mean((result2[,1]-result2[,2])^2)
+```
+The test MSE is 0.0000126. It is accurate than the first one.
+
+```{r}
+# try three hidden layers with 10 nodes each
+net_multi3<- neuralnet(outcome~x+y, traindata, hidden=c(10,10,10), rep=1)
+testdata3 <- data.frame(x=1:10,y=1:10)
+testresult3 <- compute(net_multi3,testdata3)
+result3 <- cbind(testresult3$net.result,(1:10)*(1:10))
+colnames(result3) <- c("predition","true value")
+result3
+mean((result3[,1]-result3[,2])^2)
+```
+The test MSE is 0.000000678. It is less accurate than the second one. So the best model is the second one.
+
+```{r}
+# plot the best model
+plot(net_multi3)
+```
+
+There are four layers and two hidden layers in the model. In each hidden layer, there are 20 nodes. The weights are displayed in the plot and the test MSE of this model is 0.034.
+
+
+#### Problem 3
+Create a neural network that predicts a hitters salary will be above the median or below using the Hitters Dataset.  You will have to create a variable “above median salary” and “below median salary”.
+
+```{r}
+hitters <- na.omit(Hitters)
+dim(hitters)
+summary(lm(Salary~., data = Hitters))
+```
+
+Choose variables Walks and PutOuts to predict the salary.
+
+```{r}
+s <- median(hitters$Salary)
+Salary <- rep(NA,length(hitters$Salary))
+Salary[hitters$Salary>=s] <- "above median salary"
+Salary[hitters$Salary<s] <- "below median salary"
+salary <- class.ind(Salary)
+set.seed(11)
+index_train <- sample(1:263,150)
+index_test <- setdiff(1:263,index_train)
+salary_train <- salary[index_train]
+salary_test <- salary[index_test]
+hitters_train <- cbind(Hitters[index_train,-19],salary_train)
+hitters_test <- cbind(Hitters[index_test,-19],salary_test)
+hitters_net <- neuralnet(salary_train~Walks+PutOuts,
+                           data = hitters_train, 
+                           hidden = 10, rep=10)
+hitters_result <- compute(hitters_net,hitters_test[,c(6,16)])
+pred <- hitters_result$net.result
+result <- rep(NA, length(pred))
+result[pred>0.5] <- "above median salary"
+result[pred<=0.5] <- "below median salary"
+table(result,Salary[index_test])
+```
+
+From the truth table, we conclude that approaximately 61/113=53.98% of the predicitons are correct. So it is just a little better than guess. And we can try different number of hidden layers and nodes.
+
+
+
+
+
+
+
+
+
+

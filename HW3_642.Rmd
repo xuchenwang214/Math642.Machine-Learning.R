@@ -1,0 +1,334 @@
+---
+title: "HW3_642"
+author: "Xuchen Wang"
+date: "February 6, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include==FALSE}
+library(leaps)
+library(glmnet)
+library(ISLR)
+library(pls)
+```
+
+#### Chapter 6 Problem 1
+#### We perform best subset, forward stepwise, and backward stepwise selection on a single data set. For each approach, we obtain p + 1 models, containing 0, 1, 2,..., p predictors. Explain your answers:
+##### (a) Which of the three models with k predictors has the smallest training RSS?
+Best subset has the smallest training RSS. The other two methods may not find the best possible models since it depends on which predictors they pick or drop first.
+
+##### (b) Which of the three models with k predictors has the smallest test RSS?
+Best subset may have the smallest test RSS since it searches all possible models.
+The other two methods may also have the smallest test RSS if they find the best model.
+
+##### (c) True or False:
+##### i. The predictors in the k-variable model identified by forward stepwise are a subset of the predictors in the (k+1)-variable model identified by forward stepwise selection.
+True
+
+##### ii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k+1)-variable model identified by backward stepwise selection.
+True
+
+##### iii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k+1)-variable model identified by forward stepwise selection.
+False
+
+##### iv. The predictors in the k-variable model identified by forward stepwise are a subset of the predictors in the (k+1)-variable model identified by backward stepwise selection.
+False
+
+##### v. The predictors in the k-variable model identified by best subset are a subset of the predictors in the (k+1)-variable model identified by best subset selection.
+False
+
+
+#### Chapter 6 Problem 2
+#### For parts (a) through (c), indicate which of i. through iv. is correct. Justify your answer.
+##### (a) The lasso, relative to least squares:
+iii is correct. Because as lambda increases, the effect of shrinkage becomes stronger and hence the flexibility decreases. Thus, when its increase in bias is less than its decrease in variance it gives improved prediction accuracy.
+
+##### (b) Repeat (a) for ridge regression relative to least squares.
+iii is correct. It is the same as lasso.
+
+##### (c) Repeat (a) for non-linear methods relative to least squares.
+ii is correct. Because non-linear model fit the training data better and is more flexible. But it may generate high variance. So when its increase in variance is less than its decrease in bias it gives improved prediction accuracy.
+
+
+#### Chapter 6 Problem 3
+#### Suppose we estimate the regression coefficients in a linear regression model by minimizing for a particular value of s. For parts (a) through (e), indicate which of i. through v. is correct. Justify your answer.
+##### (a) As we increase s from 0, the training RSS will:
+iv. Steadily decrease. As s increases, the effect of shrinkage decreases, the model becomes more flexible and there are more predictors in the model. As number of predictors increases, the training RSS decreases.
+
+##### (b) Repeat (a) for test RSS. 
+ii. Decrease initially, and then eventually start increasing in a U shape. When s=0, all coefficients are 0. The model is too simple and hence have a high test RSS. As s increases there are more predictors in the model and the model becomes fitting well, so the test RSS decreases till it becomes the best model. As s continue increasing, the model becomes overfitting and so test RSS increases.
+
+##### (c) Repeat (a) for variance.
+iii. Steadily increase. As s increases, the effect of shrinkage decreases, the model becomes more flexible and hence the variance increases.
+
+##### (d) Repeat (a) for (squared) bias. 
+iv. Steadily decrease. As s increases, the effect of shrinkage decreases, the model becomes more flexible and the variance increases. Thus, the bias decreases.
+
+##### (e) Repeat (a) for Bayes error rate.
+v. Remain constant. Bayes error rate is the lowest possible error rate for any classifier of a random outcome and is analogous to the irreducible error. The irreducible error is model independent and hence irrelative to the value of s.
+
+
+#### Chapter 6 Problem 8
+#### In this exercise, we will generate simulated data, and will then use this data to perform best subset selection.
+##### (a) Use the rnorm() function to generate a predictor X of length n = 100, as well as a noise vector of length n = 100.
+```{r}
+set.seed(2)
+n <- 100
+x <- rnorm(n)
+epsilon <- rnorm(n)
+```
+
+##### (b) Generate a response vector Y of length n = 100.
+```{r}
+y <- 2+3*x+5*x^2+4*x^3+epsilon
+```
+
+##### (c) Use the regsubsets() function to perform best subset selection in order to choose the best model containing the predictors. What is the best model obtained according to Cp, BIC, AIC, and adjusted R2? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained.
+```{r}
+data <- data.frame(x = x, y = y)
+subset.mod <- regsubsets(y~poly(x,10,raw = T), data=data, nvmax = 10) 
+subset.summary <- summary(subset.mod)
+# use cp methods
+cp.min <- which.min(subset.summary$cp)
+cp.min
+plot(subset.summary$cp, type = 'b')
+points(cp.min, subset.summary$cp[cp.min], col="red", cex=2, pch=20)
+coef(subset.mod, cp.min)
+# use bic methods
+bic.min <- which.min(subset.summary$bic)
+bic.min
+plot(subset.summary$bic, type = 'b')
+points(bic.min, subset.summary$bic[bic.min], col="red", cex=2, pch=20)
+coef(subset.mod, bic.min)
+# use adjusted rsq
+adjr2.max <- which.max(subset.summary$adjr2)
+adjr2.max
+plot(subset.summary$adjr2, type = 'b')
+points(adjr2.max, subset.summary$adjr2[adjr2.max], col="red", cex=2, pch=20)
+coef(subset.mod, adjr2.max)
+```
+
+All three methods pick variable X, X^2 and X^3 and their coefficients are very close to beta we set, which shows that all three methods fit the model y =2+3*x+5*x^2+4*x^3+epsilon well.
+
+##### (d) Repeat (c), using forward stepwise selection and also using backward stepwise selection. How does your answer compare to the results in (c)?
+```{r}
+fwd.mod <- regsubsets(y~poly(x,10,raw = T), data=data, nvmax = 10, method = 'forward') 
+fwd.summary <- summary(fwd.mod)
+# use cp methods
+cp.min <- which.min(fwd.summary$cp)
+cp.min
+plot(fwd.summary$cp, type = 'b')
+points(cp.min, fwd.summary$cp[cp.min], col="red", cex=2, pch=20)
+coef(fwd.mod, cp.min)
+# use bic methods
+bic.min <- which.min(fwd.summary$bic)
+bic.min
+plot(fwd.summary$bic, type = 'b')
+points(bic.min, fwd.summary$bic[bic.min], col="red", cex=2, pch=20)
+coef(fwd.mod, bic.min)
+# use adjusted rsq
+adjr2.max <- which.max(fwd.summary$adjr2)
+adjr2.max
+plot(fwd.summary$adjr2, type = 'b')
+points(adjr2.max, fwd.summary$adjr2[adjr2.max], col="red", cex=2, pch=20)
+coef(fwd.mod, adjr2.max)
+
+bwd.mod <- regsubsets(y~poly(x,10,raw = T), data=data, nvmax = 10, method = 'backward') 
+bwd.summary <- summary(bwd.mod)
+# use cp methods
+cp.min <- which.min(bwd.summary$cp)
+cp.min
+plot(bwd.summary$cp, type = 'b')
+points(cp.min, bwd.summary$cp[cp.min], col="red", cex=2, pch=20)
+coef(bwd.mod, cp.min)
+# use bic methods
+bic.min <- which.min(bwd.summary$bic)
+bic.min
+plot(bwd.summary$bic, type = 'b')
+points(bic.min, bwd.summary$bic[bic.min], col="red", cex=2, pch=20)
+coef(bwd.mod, bic.min)
+# use adjusted rsq
+adjr2.max <- which.max(bwd.summary$adjr2)
+adjr2.max
+plot(bwd.summary$adjr2, type = 'b')
+points(adjr2.max, bwd.summary$adjr2[adjr2.max], col="red", cex=2, pch=20)
+coef(bwd.mod, adjr2.max)
+```
+
+The result of both forward stepwise and backward stepwise are quite the same as the result in part(c).
+
+##### (e) Now fit a lasso model to the simulated data. Use cross-validation to select the optimal value of lambda. Create plots of the cross-validation error as a function of lambda. Report the resulting coefficient estimates, and discuss the results obtained.
+```{r}
+xmatrix <- model.matrix(y~poly(x,10,raw = T), data = data)[,-1]
+grid <- 10^seq(10, -2, length = 100)
+# split data into training and testing data
+set.seed(1)
+train <- sample(n, n/2)
+test <- -train
+# fit the model with training data
+lasso.train <- glmnet(xmatrix[train,], y[train], alpha = 1, lambda = grid)
+# choose the optimal lambda
+cv.out <- cv.glmnet(xmatrix[train,], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+print(paste("optimal lambda is", bestlam))
+# estimate the cv errors and plot 
+pred <- predict(lasso.train, s = grid, newx = xmatrix[test,])
+test.error <- apply((y[test]-pred)^2,2,mean)
+plot(grid, test.error, type = 'l')
+plot(cv.out)
+# refit the model with full data
+lasso.mod <- glmnet(xmatrix, y, alpha = 1, lambda = grid)
+coefi <- predict(lasso.mod, s = bestlam, type = "coefficients")[1:10,]
+coefi[coefi!=0]
+```
+
+Lasso method picks variable X, X^2 and X^3 and their coefficients are very close to beta we set, which shows that all three methods fit the model y =2+3*x+5*x^2+4*x^3+epsilon well.
+
+##### (f) Now generate a response vector Y according to the model, and perform best subset selection and the lasso. Discuss the results obtained.
+```{r}
+y <- 4 + 7*x^7 + epsilon
+# best subset selection
+data <- data.frame(x = x, y = y)
+subset.mod <- regsubsets(y~poly(x,10,raw = T), data=data, nvmax = 10) 
+subset.summary <- summary(subset.mod)
+# use cp methods
+cp.min <- which.min(subset.summary$cp)
+cp.min
+plot(subset.summary$cp, type = 'b')
+points(cp.min, subset.summary$cp[cp.min], col="red", cex=2, pch=20)
+coef(subset.mod, cp.min)
+# use bic methods
+bic.min <- which.min(subset.summary$bic)
+bic.min
+plot(subset.summary$bic, type = 'b')
+points(bic.min, subset.summary$bic[bic.min], col="red", cex=2, pch=20)
+coef(subset.mod, bic.min)
+# use adjusted rsq
+adjr2.max <- which.max(subset.summary$adjr2)
+adjr2.max
+plot(subset.summary$adjr2, type = 'b')
+points(adjr2.max, subset.summary$adjr2[adjr2.max], col="red", cex=2, pch=20)
+coef(subset.mod, adjr2.max)
+
+# lasso
+xmatrix <- model.matrix(y~poly(x,10,raw = T), data = data)[,-1]
+grid <- 10^seq(10, -2, length = 100)
+# split data into training and testing data
+set.seed(1)
+train <- sample(n, n/2)
+test <- -train
+# fit the model with training data
+lasso.train <- glmnet(xmatrix[train,], y[train], alpha = 1, lambda = grid)
+# choose the optimal lambda
+cv.out <- cv.glmnet(xmatrix[train,], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+print(paste("optimal lambda is", bestlam))
+# estimate the cv errors and plot 
+pred <- predict(lasso.train, s = grid, newx = xmatrix[test,])
+test.error <- apply((y[test]-pred)^2,2,mean)
+plot(grid, test.error, type = 'l')
+plot(cv.out)
+# refit the model with full data
+lasso.mod <- glmnet(xmatrix, y, alpha = 1, lambda = grid)
+coefi <- predict(lasso.mod, s = bestlam, type = "coefficients")[1:10,]
+coefi[coefi!=0]
+```
+
+All three methods of best subset pick variable X^7 and their coefficients are very close to beta we set, which shows that all three methods fit the model y = 4 + 7*x^7 + epsilon well.
+Lasso method picks variable X^7 and their coefficients are very close to beta we set but different from that of the best subset method, which shows that lasso fits the model y = 4 + 7*x^7 + epsilon as well.
+
+#### Chapter 6 Problem 9
+#### In this exercise, we will predict the number of applications received using the other variables in the College data set.
+##### (a) Split the data set into a training set and a test set.
+```{r}
+data(College)
+college <- na.omit(College)
+x <- model.matrix(Apps~., data = college)[,-1]
+y <- college$Apps
+
+set.seed(1)
+train <- sample(nrow(college),nrow(college)/2)
+test <- -train
+```
+
+##### (b) Fit a linear model using least squares on the training set, and report the test error obtained.
+```{r}
+lm.fit <- lm(Apps~., data = college, subset = train)
+lm.pre <- predict(lm.fit, college[test,])
+mean((y[test]-lm.pre)^2)
+```
+
+##### (c) Fit a ridge regression model on the training set, with lambda chosen by cross-validation. Report the test error obtained.
+```{r}
+ridge.train <- glmnet(x[train,], y[train], alpha = 0, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train,], y[train], alpha = 0)
+bestlam <- cv.out$lambda.min
+bestlam
+pre.test <- predict(ridge.train, s = bestlam, newx = x[test,])
+mean((pre.test-y[test])^2)
+```
+
+##### (d) Fit a lasso model on the training set, with lambda chosen by cross- validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+```{r}
+lasso.train <- glmnet(x[train,], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train,], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+bestlam
+pre.test <- predict(lasso.train, s = bestlam, newx = x[test,])
+mean((pre.test-y[test])^2)
+lasso.mod <- glmnet(x, y, alpha = 1, lambda = grid)
+coefi <- predict(lasso.mod, s = bestlam, type = "coefficients")[1:ncol(college),]
+coefi[coefi!=0]
+```
+
+##### (e) Fit a PCR model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
+```{r}
+pcr.fit <- pcr(Apps~., data = college, subset=train, scale = T, validation = "CV")
+summary(pcr.fit)
+validationplot(pcr.fit, val.type="MSEP")
+```
+
+choose M with the smallest CV, so M = 10.
+
+```{r}
+pcr.pre <- predict(pcr.fit, x[test,], ncomp = 10)
+mean((pcr.pre-y[test])^2)
+```
+
+##### (f) Fit a PLS model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
+```{r}
+pls.fit <- plsr(Apps~., data = college, subset=train, scale = T, validation = "CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type="MSEP")
+```
+
+choose M with the smallest CV, so M = 10.
+```{r}
+pls.pre <- predict(pls.fit, x[test,], ncomp = 10)
+mean((pls.pre-y[test])^2)
+```
+
+##### (g) Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+The test MSE of OLS, rigde regression, Lasso and pls are comparable. The test MSE of pcr is higher than the others.
+```{r}
+tss.test <- mean((y[test] - mean(y[test]))^2)
+lm.test.r2 <- 1 -  mean((y[test]-lm.pre)^2)/tss.test
+ridge.test.r2 <- 1 - mean((pre.test-y[test])^2)/tss.test
+lasso.test.r2 <- 1 - mean((pre.test-y[test])^2) /tss.test
+pcr.test.r2 <- 1 - mean((pcr.pre-y[test])^2) /tss.test
+pls.test.r2 <- 1 - mean((pls.pre-y[test])^2) /tss.test
+c(lm.test.r2, ridge.test.r2, lasso.test.r2, pcr.test.r2, pls.test.r2)
+barplot(c(lm.test.r2, ridge.test.r2, lasso.test.r2, pcr.test.r2, pls.test.r2), col="red", names.arg=c("OLS", "Ridge", "Lasso", "PCR", "PLS"), main="Test R-squared")
+```
+
+The plot shows that test R2. From the plot, PCR has a smaller test R2 than the others. The other four have R2 around 0.9. Therefore, all models except PCR predict college applications with high accuracy.
+
+
+
+

@@ -1,0 +1,165 @@
+---
+title: "HW1_642"
+author: "Xuchen Wang"
+date: "January 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Chapter 2 Problem 10
+#### (a)
+```{r}
+library(MASS)
+data(Boston)
+?Boston
+dim(Boston) 
+```
+
+506 rows and 14 columns. Rows represent observations. Columns represent predictors.
+
+#### (b)
+```{r}
+attach(Boston)
+pairs(Boston)       # plot all pairwise scatterplots
+par(mfrow=c(2,2))
+plot(zn, rm)        
+plot(indus, nox)    
+plot(lstat, medv)   
+plot(lstat, rm)     
+```
+
+It seems that there is no relationship between zn and rm. There is a positive relationship between indus and nox. There is a negative relationship between lstat and medv. There is a negative relationship between lstat and medv.
+
+#### (c)
+```{r}
+cor(crim, Boston)
+```
+
+Since the correlation of which is greater than 0.5 is dis and tax. There is positive relationship between crim and dis, tax.
+
+#### (d)
+```{r}
+summary(crim)
+```
+
+The maximum of crime rate is  88.97%. And the median is 0.2565%. So there are suburbs have particularly high crime rate.
+```{r}
+summary(tax) 
+```
+
+The maximum of tax rate is 7.11%. The median is 3.3% and Q3 is 6.66%. So the max of tax rate is not so high.
+```{r}
+summary(ptratio)
+```
+
+The maximum of pupil-teacher ratios is 22 and the median is 19.05. So there is not any suburbs which have particularly high pupil-teacher ratios.
+
+#### (e)
+```{r}
+sum(chas)
+```
+
+#### (f)
+```{r}
+median(ptratio)
+```
+
+#### (g)
+```{r}
+which.min(medv)  
+Boston[which.min(medv),]
+for (i in 1:13){
+  print(paste("summary of", names(Boston)[i]))
+  print(summary(Boston[,i]))
+}
+```
+
+It is higher than 75% of the overall ranges of crim. It is the lowest of overall ranges of zn. It is 75% of overall ranges of indus. It is higher than 75% of the overall ranges of nox. It is lower than 25% of the overall ranges of rm. It is the max of the overall ranges of age. It is lower than 25% of the overall ranges of dis. It is the 75% of the overall ranges of rad. It is the 75% of the overall ranges of tax. It is the 75% of the overall ranges of ptratio. It is the max of the overall ranges of black. It is higher than 75% of the overall ranges of lstat.
+
+#### (h)
+```{r}
+sum(rm>7)  
+sum(rm>8) 
+Boston[c(which((rm >8))),]
+```
+
+These 13 suburbs typically have a low crim rate, low(8 suburbs) or high zn, only 2 suburbs bound the river. nearly the same nox, close rm, high age except 2 suburb, only one high rad, nearly the same tax except one suburb, close pupil-teacher ratios and black, low lstat except one suburb and high medv except 3 suburbs.
+
+### chapte 3 Problem 8
+#### (a)
+```{r}
+library(ISLR)
+data(Auto)
+attach(Auto)
+lm.mh <- lm(mpg~ horsepower)
+summary(lm.mh) 
+```
+
+(1). There is a relationship between the predictor and the response since p-value is very very small. (2). The relationship is very strong since p-value is close to 0. (3). The relationship is negative since the estimate coefficient is negative.
+```{r}
+predict(lm.mh, data.frame(horsepower= 98), interval = "confidence")
+predict(lm.mh, data.frame(horsepower= 98), interval = "prediction")
+```
+
+(4). fit: 24.46708, 95% confidence: (23.97308, 24.96108), 95% prediction: (14.8094, 34.12476)
+
+#### (b)
+```{r}
+plot(horsepower, mpg)
+abline(lm.mh, lwd = 2, col = "red")
+```
+
+#### (c)
+```{r}
+par(mfrow = c(2,2))
+plot(lm.mh)
+```
+
+The plot of residuals-fitted values shows that there is non-linear relationship. The plot of Normal Q-Q shows that it is not a normal distirbution. The plot of residuals-leverage shows than there are a few outliers and a few high leverage points.
+
+### chapter 3 Problem 15
+#### (a)
+```{r}
+coeff_sim <- c()   # coeffient of simple linear model
+for (i in 2:14){
+  print(paste("crim~",names(Boston)[i]))
+  lm.fit <- lm(crim~ Boston[,i])
+  print(summary(lm.fit))
+  plot(Boston[,i], crim, xlab = names(Boston)[i])  
+  abline(lm.fit, lwd = 2, col = "red")
+  # plot linear regression line for each model
+  coeff_sim[i-1] <- coef(lm.fit)[2]  # extract coefficients
+}
+```
+
+The p-value of all variables except chas are smaller than 0.001, which means except chas, all variables have relationship with crim.
+
+#### (b)
+```{r}
+lm.all <- lm(crim~., data = Boston)
+summary(lm.all)
+```
+
+For predictors zn, nox, dis, rad, black, lstat, medv, we can reject the null hypothesis, since their p-value is very small.
+
+#### (c)
+```{r}
+coeff_mul <- coef(lm.all)[-1]
+plot(coeff_sim, coeff_mul)
+```
+
+The simple coefficient and the multiple coefficient of nox is totally different. The others are very close.
+
+#### (d)
+```{r}
+for (i in 2:13){
+  print(paste("crim ~",names(Boston)[i]))
+  lm.fit <- lm(crim~ Boston[,i]+I(Boston[,i]^2)+I(Boston[,i]^3))
+  print(summary(lm.fit))
+}
+```
+
+There is evidence of non-linear association between response and predictor zn, indus, nox, age, dis, ptratio, lstat.

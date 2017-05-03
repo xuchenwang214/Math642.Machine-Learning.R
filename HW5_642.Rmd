@@ -1,0 +1,232 @@
+---
+title: "HW5_642"
+author: "Xuchen Wang"
+date: "February 19, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(ISLR)
+library(MASS)
+library(class)
+```
+
+#### Chapter 4 Problem 6
+##### (a)
+```{r}
+beta0 <- -6
+beta1 <- 0.05
+beta2 <- 1
+x1 <- 40
+x2 <- 3.5
+pr <- 1/(1+exp(-beta0-beta1*x1-beta2*x2))
+pr
+```
+
+##### (b)
+```{r}
+pr <- 0.5
+x1 <- (log(pr/(1-pr))-beta0-beta2*x2)/beta1
+x1
+```
+
+#### Chapter 4 Problem 10
+#### This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+##### (a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+```{r}
+attach(Weekly)
+names(Weekly)
+dim(Weekly)
+summary(Weekly)
+cor(Weekly[,-9])
+plot(Volume)
+```
+
+Year and Volume seem to have a positive relationship. No other patterns are discernible.
+
+##### (b) Use the full dataset to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+```{r}
+glm_fit_all <- glm(Direction~ Lag1+Lag2+Lag3+Lag4+Lag5+Volume, data = Weekly, 
+                   family = binomial)
+summary(glm_fit_all)
+```
+
+According to p-value, Lag 2 appears to be statistically significant.
+
+##### (c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+```{r}
+contrasts(Direction)
+```
+
+```{r}
+glm_all_prob <- predict(glm_fit_all, type = "response")
+glm_all_pred <- rep("Down", 1089)
+glm_all_pred[glm_all_prob>0.5] <- "Up"
+# confusion table
+table(glm_all_pred, Direction)
+# fraction of correct predictions
+mean(glm_all_pred == Direction)
+```
+
+The type I error rate, which incorrectly assigns a Down direction to an Up direction is 430/(430+50)= 89.59%. The type II error rate, which incorrectly assigns an Up direction to a Down direction is 48/(48+557)= 7.93%.
+
+##### (d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+```{r}
+train <- (Year < 2009)
+Weekly_test <- Weekly[!train,]
+Direction_test <- Direction[!train]
+glm_fit <- glm(Direction~Lag2, data = Weekly, subset = train, family = binomial)
+glm_prob <- predict(glm_fit, Weekly_test, type = "response")
+glm_pred <- rep("Down", dim(Weekly_test)[1])
+glm_pred[glm_prob > 0.5] <- "Up"
+# confusion matrix
+table(glm_pred, Direction_test)
+# fraction of correct predictions
+mean(glm_pred == Direction_test)
+```
+
+##### (e) Repeat (d) using LDA.
+```{r}
+lda_fit <- lda(Direction~Lag2, data = Weekly, subset = train)
+lda_pred <- predict(lda_fit, Weekly_test)
+lda_class <- lda_pred$class
+# confusion matrix
+table(lda_class, Direction_test)
+# fraction of correct predictions
+mean(lda_class == Direction_test)
+```
+
+##### (f) Repeat (d) using QDA.
+```{r}
+qda_fit <- qda(Direction~Lag2, data = Weekly, subset = train)
+qda_pred <- predict(qda_fit, Weekly_test)
+qda_class <- qda_pred$class
+# confusion matrix
+table(qda_class, Direction_test)
+# fraction of correct predictions
+mean(qda_class == Direction_test)
+```
+
+##### (g) Repeat (d) using KNN with K = 1.
+```{r}
+train_x <- matrix(Lag2[train], ncol = 1)
+test_x <- matrix(Lag2[!train], ncol = 1)
+train_direction <- Direction[train]
+set.seed(1)
+knn_fit <- knn(train_x, test_x, train_direction, k=1)
+table(knn_fit, Direction_test)
+mean(knn_fit == Direction_test)
+```
+
+##### (h) Which of these methods appears to provide the best results on this data?
+Logistic regression and LDA appear to provide the best results since they have the lowest error rate, which equals to (1-0.625)= 37.5%
+
+##### (i) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
+```{r}
+# logistic regression with Lag1, Lag2
+glm_fit <- glm(Direction~Lag1+Lag2, data = Weekly, subset = train, family = binomial)
+glm_prob <- predict(glm_fit, Weekly_test, type = "response")
+glm_pred <- rep("Down", dim(Weekly_test)[1])
+glm_pred[glm_prob > 0.5] <- "Up"
+# confusion matrix
+table(glm_pred, Direction_test)
+# fraction of correct predictions
+mean(glm_pred == Direction_test)
+```
+
+```{r}
+# lda with Lag1:Lag2
+lda_fit <- lda(Direction~Lag1:Lag2, data = Weekly, subset = train)
+lda_pred <- predict(lda_fit, Weekly_test)
+lda_class <- lda_pred$class
+# confusion matrix
+table(lda_class, Direction_test)
+# fraction of correct predictions
+mean(lda_class == Direction_test)
+```
+
+```{r}
+# qda with Lag1:Lag2
+qda_fit <- qda(Direction~Lag2, data = Weekly, subset = train)
+qda_pred <- predict(qda_fit, Weekly_test)
+qda_class <- qda_pred$class
+# confusion matrix
+table(qda_class, Direction_test)
+# fraction of correct predictions
+mean(qda_class == Direction_test)
+```
+
+```{r}
+# knn with k=15
+train_x <- matrix(Lag2[train], ncol = 1)
+test_x <- matrix(Lag2[!train], ncol = 1)
+train_direction <- Direction[train]
+set.seed(1)
+knn_fit <- knn(train_x, test_x, train_direction, k=15)
+table(knn_fit, Direction_test)
+mean(knn_fit == Direction_test)
+```
+
+The original combination of predictor with logistic regression and lda method have the lowest test error rate.
+
+
+#### Chapter 4 Problem 12
+##### (a) 
+```{r}
+Power <- function(){2^3}
+print(Power())
+```
+
+##### (b) 
+```{r}
+Power2 <- function(x,a){x^a}
+Power2(3,8)
+```
+
+##### (c)
+```{r}
+Power2(10,3)
+Power2(8,17)
+Power2(131,3)
+```
+
+##### (d)
+```{r}
+Power3 <- function(x,a){
+  result <- x^a
+  return(result)
+}
+```
+
+##### (e)
+```{r}
+x <- 1:10
+plot(x, Power3(x,2), log = "xy", xlab = "log of x from 1 to 10", 
+     ylab = "log of f(x)=x^2", main = "plot of function f(x)=x^2")
+```
+
+##### (f)
+```{r}
+PlotPower <- function(x,a){
+  plot(x, Power3(x,a), log = "xy")
+}
+PlotPower (1:10 ,3)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
